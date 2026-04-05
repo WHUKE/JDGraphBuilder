@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Virtual env
+.venv/
+
+# uv
+uv.lock
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+
+# Test / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Data (generated)
+data/input/
+data/cleaned/
