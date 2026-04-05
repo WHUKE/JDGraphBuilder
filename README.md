@@ -126,4 +126,4 @@ uv run pytest
 
 - Python ≥ 3.12
 - Neo4j ≥ 5.0 (Community Edition)
-- [JDParser](../JDParser/) — 上游项目，提供解析后的 JD 数据
+- [JDParser](https://github.com/WHUKE/JDParser) — 上游项目，提供解析后的 JD 数据
