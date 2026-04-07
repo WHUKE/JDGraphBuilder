@@ -1,10 +1,15 @@
 """Neo4j 数据库连接管理"""
 
 import logging
+import os
 
+import certifi
 from neo4j import GraphDatabase
 
 from src.config import BATCH_SIZE, NEO4J_DATABASE, NEO4J_PASSWORD, NEO4J_URI, NEO4J_USER
+
+# 让 Python SSL 使用 certifi 的 CA 证书（解决 Windows + Neo4j Aura SSL 验证失败）
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
 logger = logging.getLogger(__name__)
 

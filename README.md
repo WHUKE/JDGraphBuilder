@@ -51,9 +51,11 @@ cd JDGraphBuilder
 uv sync
 ```
 
-### 2. 安装 Neo4j
+### 2. Neo4j 配置
 
-下载 [Neo4j Community Edition 5.x](https://neo4j.com/download/) 并启动服务。
+
+[Neo4j](https://neo4j.com/download/) 
+Start Free With AuraDB 或下载 Neo4j 到本地并启动服务。
 
 ### 3. 配置连接
 
@@ -62,10 +64,10 @@ uv sync
 ```bash
 cp .env.example .env
 # 编辑 .env
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=your_password
-NEO4J_DATABASE=neo4j
+NEO4J_URI=
+NEO4J_USERNAME=
+NEO4J_PASSWORD=
+NEO4J_DATABASE=
 ```
 
 ## 使用方法
