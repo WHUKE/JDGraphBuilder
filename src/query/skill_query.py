@@ -1,8 +1,11 @@
 """技能查询：热门排行 / 共现关联 / 技能树 / 按分类查询"""
 
+from src.config import QUERY_CACHE_TTL
 from src.loader.neo4j_client import Neo4jClient
+from src.utils.cache import cached
 
 
+@cached(ttl=QUERY_CACHE_TTL)
 def get_top_skills(
     client: Neo4jClient,
     limit: int = 30,

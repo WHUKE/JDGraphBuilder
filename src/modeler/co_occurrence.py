@@ -1,10 +1,21 @@
 """技能共现关系计算"""
 
+import logging
 from itertools import combinations
+
+logger = logging.getLogger(__name__)
+
+
+def _adaptive_min_count(n_jds: int) -> int:
+    """规模越大越提高阈值，抑制 O(n²) 增长。
+
+    120 → 2；600 → 10；1200 → 20。
+    """
+    return max(2, n_jds // 60)
 
 
 def compute_co_occurrence(
-    jds: list[dict], min_count: int = 2
+    jds: list[dict], min_count: int | None = 2
 ) -> list[dict]:
     """计算技能共现关系。
 
@@ -12,11 +23,17 @@ def compute_co_occurrence(
     - job_count: 共同出现在多少个 JD 中
     - weight: 归一化后的共现强度 (0-1)
 
-    仅保留 job_count >= min_count 的共现关系。
+    Args:
+        jds: 清洗后的 JD 列表。
+        min_count: 过滤阈值。传入 None 时按 len(jds) 自适应计算。
 
     Returns:
         [{"skill_a": "Python", "skill_b": "Django", "job_count": 15, "weight": 0.83}, ...]
     """
+    if min_count is None:
+        min_count = _adaptive_min_count(len(jds))
+        logger.info("co_occurrence 自适应 min_count=%d (n_jds=%d)", min_count, len(jds))
+
     pair_counts: dict[tuple[str, str], int] = {}  # (a, b) → count, a < b
     # 用于保留原始名称大小写
     name_map: dict[str, str] = {}  # lower → original

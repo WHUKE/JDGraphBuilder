@@ -1,8 +1,11 @@
 """统计查询：图谱概览 / 各类分布"""
 
+from src.config import QUERY_CACHE_TTL
 from src.loader.neo4j_client import Neo4jClient
+from src.utils.cache import cached
 
 
+@cached(ttl=QUERY_CACHE_TTL)
 def get_graph_overview(client: Neo4jClient) -> dict:
     """获取图谱概览：各类节点和关系的数量。"""
     node_counts = client.run_query(
@@ -36,6 +39,7 @@ def get_graph_overview(client: Neo4jClient) -> dict:
     }
 
 
+@cached(ttl=QUERY_CACHE_TTL)
 def get_skill_distribution(
     client: Neo4jClient,
     limit: int = 50,
@@ -54,6 +58,7 @@ def get_skill_distribution(
     )
 
 
+@cached(ttl=QUERY_CACHE_TTL)
 def get_location_distribution(client: Neo4jClient) -> list[dict]:
     """各城市的职位数量统计。"""
     return client.run_query(
@@ -65,6 +70,7 @@ def get_location_distribution(client: Neo4jClient) -> list[dict]:
     )
 
 
+@cached(ttl=QUERY_CACHE_TTL)
 def get_education_distribution(client: Neo4jClient) -> list[dict]:
     """各学历要求的职位数量统计。"""
     return client.run_query(
@@ -76,6 +82,7 @@ def get_education_distribution(client: Neo4jClient) -> list[dict]:
     )
 
 
+@cached(ttl=QUERY_CACHE_TTL)
 def get_category_distribution(client: Neo4jClient) -> list[dict]:
     """各职位类别的统计。"""
     return client.run_query(
@@ -87,6 +94,7 @@ def get_category_distribution(client: Neo4jClient) -> list[dict]:
     )
 
 
+@cached(ttl=QUERY_CACHE_TTL)
 def get_skill_category_distribution(client: Neo4jClient) -> list[dict]:
     """各技能类别的技能数量和关联职位数。"""
     return client.run_query(

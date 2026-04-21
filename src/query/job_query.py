@@ -68,10 +68,11 @@ def find_jobs_by_education(
         WHERE e.rank <= $rank
         OPTIONAL MATCH (j)-[:LOCATED_IN]->(l:Location)
         OPTIONAL MATCH (j)-[:BELONGS_TO]->(c:Category)
+        WITH j, e, c, collect(DISTINCT l.name) AS locations
         RETURN j.title AS title,
                j.source_file AS source_file,
                e.level AS education,
-               collect(DISTINCT l.name) AS locations,
+               locations,
                c.name AS category
         ORDER BY e.rank DESC, j.title
         LIMIT $limit
