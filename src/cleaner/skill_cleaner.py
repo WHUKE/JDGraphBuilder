@@ -26,6 +26,7 @@ def clean_skills(required: list[dict], preferred: list[dict]) -> tuple[list[dict
 def _clean_single_skill(skill: dict) -> dict:
     """清洗单个技能 dict：补全缺失字段。"""
     from src.cleaner.field_cleaner import clean_proficiency
+    from src.cleaner.skill_hierarchy import infer_parent
 
     result = dict(skill)
 
@@ -39,8 +40,9 @@ def _clean_single_skill(skill: dict) -> dict:
     if not result.get("category") or not result["category"].strip():
         result["category"] = "其他"
 
-    # parent 保留（可为 None）
-    result.setdefault("parent", None)
+    # parent：优先保留 LLM/原数据的 parent，否则按规则兜底推断
+    existing_parent = result.get("parent")
+    result["parent"] = infer_parent(result["name"], existing_parent)
 
     return result
 

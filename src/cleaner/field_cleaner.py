@@ -1,10 +1,17 @@
 """字段级清洗：地点 / 学历 / 经验 / 职位类别 / 职位名称"""
 
 import json
+import logging
 import re
 from pathlib import Path
 
 from src.config import MAPPINGS_DIR
+
+logger = logging.getLogger(__name__)
+
+# 本轮清洗流程中出现过的非标准 proficiency 值（原始词 → 出现次数），
+# 由 pipeline 在流程结束后读取并写入清洗报告。
+_unknown_proficiency_counter: dict[str, int] = {}
 
 
 def _load_mapping(filename: str) -> dict:
@@ -213,7 +220,7 @@ _PROFICIENCY_MAP = {
     "了解": "了解",
     "不限": "不限",
     # 非标准值映射
-    "掌握": "熟练",
+    "掌握": "熟悉",
     "扎实": "熟练",
     "深入": "精通",
     "深入了解": "熟悉",
@@ -233,13 +240,57 @@ _PROFICIENCY_MAP = {
     "突出": "精通",
     "善于": "熟练",
     "一定": "了解",
+    # P0.1 扩充：LLM 常见变体
+    "基础": "了解",
+    "初级": "了解",
+    "初步": "了解",
+    "中级": "熟悉",
+    "高级": "熟练",
+    "专家": "精通",
+    "有经验": "熟练",
+    "有相关经验": "熟练",
+    "有一定经验": "熟悉",
+    "实战经验": "熟练",
+    "精熟": "精通",
+    "精湛": "精通",
+    "深刻": "精通",
+    "娴熟": "熟练",
+    "使用过": "了解",
+    "用过": "了解",
+    "会": "了解",
+    "能够": "熟悉",
+    "能熟练": "熟练",
+    "能熟练使用": "熟练",
+    "熟练掌握": "熟练",
+    "熟练使用": "熟练",
+    "熟练运用": "熟练",
+    "熟悉掌握": "熟悉",
+    "精通掌握": "精通",
 }
 
 
 def clean_proficiency(proficiency: str | None) -> str:
-    """将熟练度归一化为标准五级枚举值。"""
+    """将熟练度归一化为标准五级枚举值。
+
+    非命中 _PROFICIENCY_MAP 的原始词会写入 debug 日志，并被 pipeline 的
+    清洗报告统计。最终仍归一为 "不限"。
+    """
     if not proficiency or not proficiency.strip():
         return "不限"
 
     p = proficiency.strip()
-    return _PROFICIENCY_MAP.get(p, "不限")
+    if p in _PROFICIENCY_MAP:
+        return _PROFICIENCY_MAP[p]
+
+    # 未命中：记录以便后续报告与映射表扩充
+    _unknown_proficiency_counter[p] = _unknown_proficiency_counter.get(p, 0) + 1
+    logger.debug("未识别的 proficiency 值: %r，已归一为 '不限'", p)
+    return "不限"
+
+
+def pop_unknown_proficiencies() -> dict[str, int]:
+    """取出并清空本轮清洗中累积的未识别 proficiency 计数（供 pipeline 使用）。"""
+    global _unknown_proficiency_counter
+    result = _unknown_proficiency_counter
+    _unknown_proficiency_counter = {}
+    return result
