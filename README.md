@@ -53,33 +53,38 @@ uv sync
 
 ### 2. Neo4j 配置
 
+**要求 Neo4j 5.0 及以上版本**（本项目使用新版 `CREATE FULLTEXT INDEX ... ON EACH` 语法，Neo4j 4.x 不兼容）。
 
-[Neo4j](https://neo4j.com/download/) 
-Start Free With AuraDB 或下载 Neo4j 到本地并启动服务。
+[Neo4j](https://neo4j.com/download/) — 使用 AuraDB 免费版或本地安装并启动。
 
 ### 3. 配置连接
 
-复制 `.env.example` 为 `.env`，修改 Neo4j 连接信息：
+**必须**复制 `.env.example` 为 `.env` 并填入真实连接信息，否则启动会报错：
 
 ```bash
 cp .env.example .env
 # 编辑 .env
-NEO4J_URI=
-NEO4J_USERNAME=
-NEO4J_PASSWORD=
-NEO4J_DATABASE=
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=<your-password>
+NEO4J_DATABASE=neo4j
 ```
+
+可选参数：`NEO4J_MAX_RETRIES` / `NEO4J_RETRY_BACKOFF` / `NEO4J_CONN_TIMEOUT` / `QUERY_CACHE_TTL`（详见 `.env.example`）。
 
 ## 使用方法
 
 ### 一键构建图谱
 
 ```bash
-# 清洗 + 建模 + 导入 Neo4j
+# 清洗 + 建模 + 导入 Neo4j（全量模式，默认）
 uv run python -m src.cli.build --input data/input/_all.json
 
-# 重置数据库后重新导入
+# 重置数据库后重新导入（full 模式下）
 uv run python -m src.cli.build --input data/input/_all.json --reset
+
+# 增量模式：只更新输入中出现的 source_file 对应的 Job 及其关系
+uv run python -m src.cli.build --input data/input/_all.json --mode incremental
 
 # 只执行清洗和建模（不连接 Neo4j）
 uv run python -m src.cli.build --input data/input/_all.json --skip-import

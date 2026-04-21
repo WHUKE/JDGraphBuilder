@@ -27,3 +27,4 @@ htmlcov/
 # Data (generated)
 data/input/
 data/cleaned/
+data/_bench/
