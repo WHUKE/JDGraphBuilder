@@ -79,6 +79,93 @@ class BatchImporter:
 
         return stats
 
+    # ── 增量导入（P1.1） ────────────────────────────────
+
+    def import_all_incremental(
+        self,
+        nodes: dict,
+        relations: dict,
+        co_occurrences: list[dict],
+        touched_source_files: list[str],
+    ) -> dict:
+        """增量导入：仅更新 touched_source_files 涉及的 Job 及其关系。
+
+        策略：
+          a) 先 DELETE 这些 Job 的 5 类出边（REQUIRES_SKILL / PREFERS_SKILL /
+             REQUIRES_EDUCATION / LOCATED_IN / BELONGS_TO），避免脏边残留。
+          b) MERGE 字典节点（Skill / Location / Education / Category，全量，
+             不会破坏既有；因规模小，这里依然走全量 MERGE 保证新数据可用）。
+          c) MERGE 这些 Job 节点（升级 title 等属性）。
+          d) 重新建立这些 Job 的 5 类出边（只导入子集）。
+          e) PARENT_OF 全量重算（规模 < 1k，简单稳定）。
+          f) CO_OCCURS_WITH 全量重算（整图 DELETE 后重新 MERGE）。
+        """
+        stats: dict[str, int] = {}
+        t0 = time.time()
+        touched = list(dict.fromkeys(touched_source_files))  # 去重保序
+        logger.info("增量导入 %d 个 Job（source_file 集合）", len(touched))
+
+        # a) 清理这些 Job 的旧出边
+        stats["purged_edges"] = self._purge_job_edges(touched)
+
+        # b) 字典节点 MERGE（小规模，全量即可）
+        stats["skills"] = self._import_skills(nodes["skills"])
+        stats["locations"] = self._import_locations(nodes["locations"])
+        stats["educations"] = self._import_educations(nodes["educations"])
+        stats["categories"] = self._import_categories(nodes["categories"])
+
+        # c) Job 节点 MERGE（仅 touched 子集）
+        touched_set = set(touched)
+        jobs_subset = [j for j in nodes["jobs"] if j["source_file"] in touched_set]
+        stats["jobs"] = self._import_jobs(jobs_subset)
+
+        # d) 重建 Job 的 5 类出边（仅 touched 子集）
+        req_subset = [r for r in relations["requires_skill"] if r["source_file"] in touched_set]
+        pref_subset = [r for r in relations["prefers_skill"] if r["source_file"] in touched_set]
+        edu_subset = [r for r in relations["requires_education"] if r["source_file"] in touched_set]
+        loc_subset = [r for r in relations["located_in"] if r["source_file"] in touched_set]
+        cat_subset = [r for r in relations["belongs_to"] if r["source_file"] in touched_set]
+
+        stats["requires_skill"] = self._import_job_skill_relations(req_subset, "REQUIRES_SKILL")
+        stats["prefers_skill"] = self._import_job_skill_relations(pref_subset, "PREFERS_SKILL")
+        stats["requires_education"] = self._import_job_education(edu_subset)
+        stats["located_in"] = self._import_job_location(loc_subset)
+        stats["belongs_to"] = self._import_job_category(cat_subset)
+
+        # e) PARENT_OF 全量重算
+        self._client.run_write("MATCH ()-[r:PARENT_OF]->() DELETE r")
+        stats["parent_of"] = self._import_parent_of(relations["parent_of"])
+
+        # f) CO_OCCURS_WITH 全量重算
+        self._client.run_write("MATCH ()-[r:CO_OCCURS_WITH]-() DELETE r")
+        stats["co_occurs_with"] = self._import_co_occurrence(co_occurrences)
+
+        elapsed = time.time() - t0
+        logger.info("增量导入完成，耗时 %.1f 秒", elapsed)
+        for key, count in stats.items():
+            logger.info("  %-20s: %d", key, count)
+
+        return stats
+
+    def _purge_job_edges(self, source_files: list[str]) -> int:
+        """删除给定 source_file 对应 Job 的 5 类出边，返回删除的边总数。"""
+        if not source_files:
+            return 0
+        result = self._client.run_query(
+            """
+            UNWIND $sfs AS sf
+            MATCH (j:Job {source_file: sf})
+            OPTIONAL MATCH (j)-[r:REQUIRES_SKILL|PREFERS_SKILL|REQUIRES_EDUCATION|LOCATED_IN|BELONGS_TO]->()
+            WITH r WHERE r IS NOT NULL
+            DELETE r
+            RETURN count(*) AS deleted
+            """,
+            {"sfs": source_files},
+        )
+        deleted = result[0]["deleted"] if result else 0
+        logger.info("已清理 %d 条旧出边（来自 %d 个 Job）", deleted, len(source_files))
+        return deleted
+
     # ── 节点导入 ───────────────────────────────────────
 
     def _import_skills(self, skills: list[dict]) -> int:

@@ -1,4 +1,9 @@
-"""Schema 初始化：创建约束、索引，支持重置数据库"""
+"""Schema 初始化：创建约束、索引，支持重置数据库。
+
+注意：本模块使用 Neo4j 5.x+ 的 FULLTEXT INDEX 语法
+(`CREATE FULLTEXT INDEX ... FOR ... ON EACH [...]`)。
+若使用 Neo4j 4.x 及以下版本会报 SyntaxError — 请升级到 Neo4j 5.0 或以上。
+"""
 
 import logging
 
