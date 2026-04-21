@@ -2,11 +2,18 @@
 
 import argparse
 import logging
+import sys
 
 from src.loader.neo4j_client import Neo4jClient
 
 
 def main(argv: list[str] | None = None) -> None:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except (AttributeError, OSError):
+        pass
+
     parser = argparse.ArgumentParser(description="图谱统计信息")
     parser.add_argument("--verbose", "-v", action="store_true")
     parser.add_argument("--limit", type=int, default=20, help="各统计项的数量限制")

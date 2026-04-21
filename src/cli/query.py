@@ -9,6 +9,13 @@ from src.loader.neo4j_client import Neo4jClient
 
 
 def main(argv: list[str] | None = None) -> None:
+    # Windows GBK 控制台无法输出 ✓ ✗ 等符号，统一切到 UTF-8
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except (AttributeError, OSError):
+        pass
+
     parser = argparse.ArgumentParser(description="知识图谱查询")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(

@@ -10,6 +10,12 @@ from src.config import CLEANED_DIR, INPUT_DIR
 
 
 def main(argv: list[str] | None = None) -> None:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except (AttributeError, OSError):
+        pass
+
     parser = argparse.ArgumentParser(description="一站式构建知识图谱（清洗→建模→入库）")
     parser.add_argument(
         "--input", "-i",
@@ -18,9 +24,15 @@ def main(argv: list[str] | None = None) -> None:
         help="输入 JSON 文件路径 (默认: data/input/_all.json)",
     )
     parser.add_argument(
+        "--mode",
+        choices=["full", "incremental"],
+        default="full",
+        help="导入模式：full=全量（默认），incremental=仅更新输入中的 Job 及其关系",
+    )
+    parser.add_argument(
         "--reset",
         action="store_true",
-        help="清空数据库后重新导入",
+        help="清空数据库后重新导入（仅 full 模式可用）",
     )
     parser.add_argument(
         "--skip-import",
@@ -38,6 +50,11 @@ def main(argv: list[str] | None = None) -> None:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+
+    # 互斥校验
+    if args.reset and args.mode == "incremental":
+        print("错误: --reset 不能与 --mode incremental 同时使用", file=sys.stderr)
+        sys.exit(2)
 
     if not args.input.exists():
         print(f"错误: 输入文件不存在: {args.input}", file=sys.stderr)
@@ -62,7 +79,8 @@ def main(argv: list[str] | None = None) -> None:
     print("=" * 50)
     nodes = build_nodes(cleaned)
     relations = build_relations(cleaned)
-    co_occurrences = compute_co_occurrence(cleaned)
+    # min_count=None 触发自适应阈值（P1.3）
+    co_occurrences = compute_co_occurrence(cleaned, min_count=None)
 
     print(f"  节点: Job={len(nodes['jobs'])}, Skill={len(nodes['skills'])}, "
           f"Location={len(nodes['locations'])}, Education={len(nodes['educations'])}, "
@@ -91,9 +109,10 @@ def main(argv: list[str] | None = None) -> None:
     from src.loader.batch_importer import BatchImporter
     from src.loader.neo4j_client import Neo4jClient
     from src.loader.schema_initializer import init_schema, reset_database
+    from src.utils.cache import invalidate_cache
 
     print("=" * 50)
-    print("Step 3: Neo4j 入库")
+    print(f"Step 3: Neo4j 入库（mode={args.mode}）")
     print("=" * 50)
 
     with Neo4jClient() as client:
@@ -105,7 +124,29 @@ def main(argv: list[str] | None = None) -> None:
         init_schema(client)
 
         importer = BatchImporter(client)
-        stats = importer.import_all(nodes, relations, co_occurrences)
+
+        if args.mode == "incremental":
+            touched = [j["source_file"] for j in nodes["jobs"]]
+            # 查询当前 Neo4j 中已存在的 Job source_file 集合（用于统计新增 vs 更新）
+            existing_rows = client.run_query(
+                "MATCH (j:Job) WHERE j.source_file IN $sfs RETURN j.source_file AS sf",
+                {"sfs": touched},
+            )
+            existing = {r["sf"] for r in existing_rows}
+            new_count = sum(1 for sf in touched if sf not in existing)
+            updated_count = len(touched) - new_count
+            print(f"  新增 Job: {new_count}，更新 Job: {updated_count}\n")
+            stats = importer.import_all_incremental(
+                nodes, relations, co_occurrences, touched
+            )
+        else:
+            stats = importer.import_all(nodes, relations, co_occurrences)
+
+        # 导入完成后主动清空只读查询缓存（P1.4）
+        cleared = invalidate_cache()
+        if cleared:
+            logger = logging.getLogger(__name__)
+            logger.info("已清空查询缓存 %d 条", cleared)
 
     print("\n导入统计:")
     for key, count in stats.items():
