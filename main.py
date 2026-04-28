@@ -1,5 +1,8 @@
+from src.cli.serve import main as serve_main
+
+
 def main():
-    print("Hello from jdgraphbuilder!")
+    serve_main()
 
 
 if __name__ == "__main__":

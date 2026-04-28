@@ -74,6 +74,28 @@ NEO4J_DATABASE=neo4j
 
 ## 使用方法
 
+### 启动图谱 API
+
+```bash
+# 推荐：启动给前端可视化页面使用的图谱接口
+uv run python -m src.cli.serve --host 0.0.0.0 --port 8000
+
+# 或直接运行入口文件
+uv run python main.py --host 0.0.0.0 --port 8000
+```
+
+启动后可访问：
+
+- `GET /health`：健康检查
+- `GET /api/graph`：返回前端可直接渲染的 `nodes` / `edges` 图数据
+
+可通过 query 调整图大小：
+
+- `skill`：聚焦某个技能，例如 `?skill=Python`
+- `skill_limit`：种子技能数量，默认 8
+- `related_skill_limit`：每个技能展开的关联技能数量，默认 3
+- `jobs_per_skill`：每个技能展开的职位数量，默认 2
+
 ### 一键构建图谱
 
 ```bash
