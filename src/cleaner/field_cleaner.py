@@ -122,22 +122,34 @@ def clean_education(education: str | None) -> str:
 
 _EXP_RANGE_RE = re.compile(r"(\d+)\s*[-–~]\s*(\d+)\s*年")
 _EXP_MIN_RE = re.compile(r"(\d+)\s*年")
+_EXP_PLUS_RE = re.compile(r"(\d+)\s*\+\s*年")  # 匹配 "3+年"
 
 
 def clean_experience(experience: str | None) -> dict:
     """将经验字符串结构化为 {"min": int, "max": int|None}。
 
     - "3-5年" → {"min": 3, "max": 5}
-    - "3年以上" → {"min": 3, "max": None}
-    - "不限" / None → {"min": 0, "max": None}
+    - "3年以上" / "3+年" → {"min": 3, "max": None}
+    - "应届" → {"min": 0, "max": 0}
+    - "不限" / "无要求" / None → {"min": 0, "max": None}
+    - "3年左右" → {"min": 2, "max": 4}
     """
     if not experience or not experience.strip():
         return {"min": 0, "max": None}
 
     exp = experience.strip()
 
-    if exp == "不限":
+    # 特殊关键词处理
+    if exp in ("不限", "无要求", "无经验要求", "经验不限"):
         return {"min": 0, "max": None}
+    
+    if exp in ("应届", "应届毕业生", "应届生"):
+        return {"min": 0, "max": 0}
+
+    # "3+年" 格式（优先于普通数字匹配）
+    m = _EXP_PLUS_RE.search(exp)
+    if m:
+        return {"min": int(m.group(1)), "max": None}
 
     # "3-5年" / "5-10年"
     m = _EXP_RANGE_RE.search(exp)

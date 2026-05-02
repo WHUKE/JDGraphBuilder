@@ -85,6 +85,25 @@ class TestCleanExperience:
         result = clean_experience("GPU编程和模型优化")
         assert result == {"min": 0, "max": None}
 
+    # === CL-3 新增测试用例 ===
+    
+    def test_fresh_graduate(self):
+        """测试应届毕业生相关表达"""
+        assert clean_experience("应届") == {"min": 0, "max": 0}
+        assert clean_experience("应届毕业生") == {"min": 0, "max": 0}
+        assert clean_experience("应届生") == {"min": 0, "max": 0}
+
+    def test_plus_years(self):
+        """测试 N+年 格式"""
+        assert clean_experience("3+年") == {"min": 3, "max": None}
+        assert clean_experience("5+年") == {"min": 5, "max": None}
+        assert clean_experience("1+年") == {"min": 1, "max": None}
+
+    def test_no_requirement(self):
+        """测试无经验要求相关表达"""
+        assert clean_experience("无要求") == {"min": 0, "max": None}
+        assert clean_experience("无经验要求") == {"min": 0, "max": None}
+        assert clean_experience("经验不限") == {"min": 0, "max": None}
 
 # ── clean_job_category ─────────────────────────────────
 
