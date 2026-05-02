@@ -13,6 +13,7 @@ from src.cleaner.field_cleaner import (
     clean_location,
     pop_unknown_proficiencies,
 )
+from src.cleaner.salary_cleaner import clean_salary
 from src.cleaner.skill_cleaner import clean_skills
 from src.cleaner.validator import validate_jd
 
@@ -29,6 +30,13 @@ def clean_single_jd(jd: dict) -> dict:
     result["education"] = clean_education(result.get("education"))
     result["experience"] = clean_experience(result.get("experience"))
     result["job_category"] = clean_job_category(result.get("job_category"))
+
+    # 薪资清洗（CL-4）
+    result["salary"] = clean_salary(
+        salary_min=result.get("salary_min"),
+        salary_max=result.get("salary_max"),
+        salary_unit=result.get("salary_unit"),
+    )
 
     # 技能清洗
     req, pref = clean_skills(

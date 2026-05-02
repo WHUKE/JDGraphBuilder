@@ -10,6 +10,7 @@ from src.cleaner.field_cleaner import (
     clean_location,
     clean_proficiency,
 )
+from src.cleaner.salary_cleaner import clean_salary
 from src.cleaner.skill_cleaner import clean_skills
 from src.cleaner.validator import validate_jd
 
@@ -194,3 +195,79 @@ class TestValidateJd:
         warnings = validate_jd({"source_file": "x.txt"})
         assert any("job_title" in w for w in warnings)
         assert any("location" in w for w in warnings)
+
+
+# ── clean_salary (CL-4) ───────────────────────────────
+
+class TestCleanSalary:
+    """测试薪资清洗功能"""
+    
+    def test_structured_k_per_month(self):
+        """测试结构化的K/月薪资"""
+        result = clean_salary(15, 30, "K/月")
+        assert result == {"min": 15.0, "max": 30.0, "unit": "月"}
+    
+    def test_structured_k_lowercase(self):
+        """测试小写k的月薪"""
+        result = clean_salary(20, 35, "k/月")
+        assert result == {"min": 20.0, "max": 35.0, "unit": "月"}
+    
+    def test_structured_wan_per_year(self):
+        """测试万/年年薪"""
+        result = clean_salary(20, 40, "万/年")
+        assert result == {"min": 20.0, "max": 40.0, "unit": "年"}
+    
+    def test_structured_yuan_per_month(self):
+        """测试元/月，应转换为K"""
+        result = clean_salary(15000, 30000, "元/月")
+        assert result == {"min": 15.0, "max": 30.0, "unit": "月"}
+    
+    def test_raw_text_k_per_month(self):
+        """测试从原始文本解析K/月"""
+        result = clean_salary(raw_text="15-30K/月")
+        assert result == {"min": 15.0, "max": 30.0, "unit": "月"}
+    
+    def test_raw_text_k_simple(self):
+        """测试简写的K格式（默认月薪）"""
+        result = clean_salary(raw_text="15-30K")
+        assert result == {"min": 15.0, "max": 30.0, "unit": "月"}
+    
+    def test_raw_text_wan_per_year(self):
+        """测试从原始文本解析万/年"""
+        result = clean_salary(raw_text="年薪 20-40 万")
+        assert result == {"min": 20.0, "max": 40.0, "unit": "年"}
+    
+    def test_raw_text_yuan_per_month(self):
+        """测试从原始文本解析元/月"""
+        result = clean_salary(raw_text="月薪 15000-30000 元")
+        assert result == {"min": 15.0, "max": 30.0, "unit": "月"}
+    
+    def test_raw_text_wan_per_year_explicit(self):
+        """测试明确的万/年格式"""
+        result = clean_salary(raw_text="20-40万/年")
+        assert result == {"min": 20.0, "max": 40.0, "unit": "年"}
+    
+    def test_none_values(self):
+        """测试空值处理"""
+        result = clean_salary(None, None, None)
+        assert result is None
+    
+    def test_empty_raw_text(self):
+        """测试空文本"""
+        result = clean_salary(raw_text="")
+        assert result is None
+    
+    def test_unparseable_text(self):
+        """测试无法解析的文本"""
+        result = clean_salary(raw_text="面议")
+        assert result is None
+    
+    def test_with_bonus(self):
+        """测试带年终奖的格式"""
+        result = clean_salary(raw_text="15-30K·15薪")
+        assert result == {"min": 15.0, "max": 30.0, "unit": "月"}
+    
+    def test_decimal_values(self):
+        """测试小数薪资"""
+        result = clean_salary(raw_text="15.5-25.5K/月")
+        assert result == {"min": 15.5, "max": 25.5, "unit": "月"}
