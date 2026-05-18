@@ -74,7 +74,6 @@ class _ApiHandler(BaseHTTPRequestHandler):
 
     def _handle_graph(self, query_string: str) -> None:
         query = parse_qs(query_string)
-        skill_limit = _parse_int(query.get("skill_limit", ["8"])[0], default=8, minimum=1, maximum=20)
         related_skill_limit = _parse_int(query.get("related_skill_limit", ["3"])[0], default=3, minimum=0, maximum=10)
         jobs_per_skill = _parse_int(query.get("jobs_per_skill", ["2"])[0], default=2, minimum=1, maximum=10)
         focus_skill = query.get("skill", [None])[0]
@@ -83,7 +82,6 @@ class _ApiHandler(BaseHTTPRequestHandler):
             with Neo4jClient() as client:
                 payload = get_visual_graph(
                     client,
-                    skill_limit=skill_limit,
                     related_skill_limit=related_skill_limit,
                     jobs_per_skill=jobs_per_skill,
                     focus_skill=focus_skill,

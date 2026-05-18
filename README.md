@@ -104,7 +104,6 @@ python main.py --frontend-dir "E:\\知识图谱工程\\JDGraphMono\\front"
 可通过 query 调整图大小：
 
 - `skill`：聚焦某个技能，例如 `?skill=Python`
-- `skill_limit`：种子技能数量，默认 8
 - `related_skill_limit`：每个技能展开的关联技能数量，默认 3
 - `jobs_per_skill`：每个技能展开的职位数量，默认 2
 

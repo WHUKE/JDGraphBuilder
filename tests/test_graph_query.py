@@ -28,9 +28,9 @@ class TestGraphQuery:
         ]
 
         client = MagicMock()
-        graph = get_visual_graph(client, skill_limit=1, related_skill_limit=1, jobs_per_skill=1)
+        graph = get_visual_graph(client, related_skill_limit=1, jobs_per_skill=1)
 
-        assert graph["meta"]["skill_limit"] == 1
+        assert graph["meta"]["related_skill_limit"] == 1
         assert any(node["id"] == "skill:Python" for node in graph["nodes"])
         assert any(node["type"] == "role" for node in graph["nodes"])
         assert any(edge["source"] == "job:job_01.json" and edge["target"] == "skill:Python" for edge in graph["edges"])

@@ -9,7 +9,6 @@ from src.query.skill_query import get_related_skills, get_top_skills
 
 def get_visual_graph(
     client: Neo4jClient,
-    skill_limit: int = 8,
     related_skill_limit: int = 3,
     jobs_per_skill: int = 2,
     focus_skill: str | None = None,
@@ -44,7 +43,7 @@ def get_visual_graph(
     edges: list[dict] = []
     edge_keys: set[tuple[str, str, str, str | None]] = set()
 
-    seeds = [{"name": focus_skill}] if focus_skill else get_top_skills(client, limit=skill_limit)
+    seeds = [{"name": focus_skill}] if focus_skill else get_top_skills(client, limit=8)
 
     for skill in seeds:
         skill_name = skill.get("name")
@@ -130,7 +129,6 @@ def get_visual_graph(
         "edges": edges,
         "meta": {
             "seed_skill": focus_skill,
-            "skill_limit": skill_limit,
             "related_skill_limit": related_skill_limit,
             "jobs_per_skill": jobs_per_skill,
             "node_count": len(nodes),
