@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import mimetypes
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from src.loader.neo4j_client import Neo4jClient
@@ -34,7 +36,41 @@ class _ApiHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/graph":
             self._handle_graph(parsed.query)
             return
+        if parsed.path == "/" or parsed.path.startswith("/front/"):
+            self._serve_static(parsed.path)
+            return
         self._send_json(404, {"error": "not found", "path": parsed.path})
+
+    def _serve_static(self, request_path: str) -> None:
+        if request_path == "/":
+            request_path = "/front/woodle_ai_home.html"
+
+        static_root = getattr(self.server, "frontend_root", None)
+        if not static_root:
+            self._send_json(404, {"error": "static_frontend_not_configured", "path": request_path})
+            return
+
+        relative_path = request_path.lstrip("/")
+        if relative_path.startswith("front/"):
+            relative_path = relative_path[len("front/"):]
+        file_path = static_root.joinpath(relative_path).resolve()
+        try:
+            if not str(file_path).startswith(str(static_root.resolve())) or not file_path.exists() or not file_path.is_file():
+                raise FileNotFoundError
+        except (OSError, FileNotFoundError):
+            self._send_json(404, {"error": "not found", "path": request_path})
+            return
+
+        content_type, _ = mimetypes.guess_type(file_path.name)
+        if content_type:
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+        else:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+        self.end_headers()
+        with file_path.open("rb") as handle:
+            self.wfile.write(handle.read())
 
     def _handle_graph(self, query_string: str) -> None:
         query = parse_qs(query_string)
@@ -89,12 +125,24 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="启动 JDGraphBuilder 图谱 API")
     parser.add_argument("--host", default="127.0.0.1", help="监听地址")
     parser.add_argument("--port", type=int, default=8000, help="监听端口")
+    parser.add_argument(
+        "--frontend-dir",
+        default=None,
+        help="静态前端目录，默认尝试 ../JDGraphMono/front",
+    )
     args = parser.parse_args(argv)
 
     server = ThreadingHTTPServer((args.host, args.port), _ApiHandler)
+    if args.frontend_dir:
+        server.frontend_root = Path(args.frontend_dir).resolve()
+    else:
+        cwd = Path(__file__).resolve().parents[2]
+        server.frontend_root = cwd.parent.joinpath("JDGraphMono", "front").resolve()
+
     print(f"JDGraphBuilder API running at http://{args.host}:{args.port}")
     print("GET /api/graph -> nodes / edges graph payload")
     print("GET /health -> health check")
+    print("GET /front/* -> 静态前端页面 / assets")
 
     try:
         server.serve_forever()

@@ -84,6 +84,18 @@ uv run python -m src.cli.serve --host 0.0.0.0 --port 8000
 uv run python main.py --host 0.0.0.0 --port 8000
 ```
 
+如果前端目录与 `JDGraphBuilder` 同级存放，则服务启动后可直接访问前端页面：
+
+```
+http://localhost:8000/front/woodle_ai_home.html
+```
+
+如果前端目录在其他位置，请使用 `--frontend-dir` 指定：
+
+```bash
+python main.py --frontend-dir "E:\\知识图谱工程\\JDGraphMono\\front"
+```
+
 启动后可访问：
 
 - `GET /health`：健康检查
