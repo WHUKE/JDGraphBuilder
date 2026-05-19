@@ -1,0 +1,18 @@
+{
+  "node_counts": {
+    "jobs": 520,
+    "skills": 4357,
+    "locations": 19,
+    "educations": 5,
+    "categories": 10
+  },
+  "relation_counts": {
+    "requires_skill": 8023,
+    "prefers_skill": 2138,
+    "requires_education": 520,
+    "located_in": 699,
+    "belongs_to": 520,
+    "parent_of": 721
+  },
+  "co_occurrence_count": 527
+}
