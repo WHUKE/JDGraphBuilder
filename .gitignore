@@ -26,3 +26,5 @@ htmlcov/
 
 # Data (generated)
 data/_bench/
+
+build_reset.log
